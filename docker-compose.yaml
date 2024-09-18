@@ -1,0 +1,60 @@
+version: "3.18"
+services:
+# Services that needed to run app
+  server:
+    image: 'nginx:stable-alpine' #use nginx image to run this container
+    ports:
+      - '9000:80'
+    volumes:
+      - ./src:/var/www/html #set the source code file to container
+      - ./nginxConfig/nginx.conf:/etc/nginx/nginx.conf:ro #replace the default nginx config file to a file in config
+      - ./nginxConfig/default:/etc/nginx/conf.d/default.conf:ro #replace the default nginx config file to a file in config
+    depends_on:
+      - php #the server need php run first in order to run properly
+      - mysql #the server need mysql run first in order to run properly
+  php:
+    build:
+      context: ./dockerfiles #find docker file in this folder
+      dockerfile: php.dockerfile #find dockerfile with this name 
+    volumes:
+      - ./src:/var/www/html:delegated #bind mounts /var/www/html with ./src
+  mysql:
+    image: 'mysql:latest' #use mysql image for this container
+    env_file: ./env/mysql.env #get env from a file that located in this directory
+    volumes:
+      - data:/var/lib/mysql #set mysql data to volume, so the data will persist even when container deleted
+  npm-run:
+    image: 'node:latest' #use node image for this container
+    working_dir: /var/www/html #set the working directory to /var/www/html
+    entrypoint: ['npm', 'run', 'dev'] #when the container is started, this command will be executed
+    volumes:
+      - ./src:/var/www/html #bind mounts /var/www/html with ./src
+# End
+# Defining Composer Container Utilities
+  composer:
+    build:
+      context: ./dockerfiles #find docker file in this folder
+      dockerfile: composer.dockerfile #find dockerfile with this name 
+    volumes:
+      - ./src:/var/www/html #bind mounts /var/www/html with ./src
+
+# Defining Artisan Container Utilities
+  artisan:
+    build:
+      context: ./dockerfiles #find docker file in this folder
+      dockerfile: php.dockerfile #find dockerfile with this name 
+    volumes:
+      - ./src:/var/www/html #bind mounts /var/www/html with ./src
+    entrypoint: ["php", "/var/www/html/artisan"] #when the container is started, this command will be executed
+
+# Defining NPM Container Utilities
+  npm:
+    image: 'node:latest' #use for this container
+    working_dir: /var/www/html #set the working directory to /var/www/html
+    entrypoint: ['npm'] #when the container is started, this command will be executed
+    volumes:
+      - ./src:/var/www/html #bind mounts /var/www/html with ./src
+
+# Define The Named Volume Here !
+volumes:
+  data: #this refer to data volume in line 25
